@@ -16,7 +16,7 @@ env:
   APP_NAME: rs-shipping
   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_NEW }}
   SONAR_PROJECT_KEY: 'coe-srs-shipping'
- #comment
+ 
   
 jobs:  
   build-shipping:
