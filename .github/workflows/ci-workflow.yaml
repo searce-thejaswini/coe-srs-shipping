@@ -12,7 +12,7 @@ on:
       - 'K8s/**'
 
 env:
-  GAR_INFO: us-central1-docker.pkg.dev/srs-cart-demo/srs-ship-demo
+  GAR_INFO: us-central1-docker.pkg.dev/tribal-thought-363101/srs-shipping-demo
   APP_NAME: rs-shipping
   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_NEW }}
   SONAR_PROJECT_KEY: 'coe-srs-shipping'
@@ -69,8 +69,7 @@ jobs:
       - name: Setup Docker
         run: |
           gcloud auth configure-docker us-central1-docker.pkg.dev
-            
-  - name: Run Wiremock server
+      - name: Run Wiremock server
         run: |
           docker run -d -p 8080:8080 -v $PWD/src/test/resources:/home/wiremock --name wiremock wiremock/wiremock:2.33.1
           docker container inspect wiremock
@@ -78,6 +77,8 @@ jobs:
           mvn test \
           org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
           -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+            
+  
        
       - name: Build-and-push-to-GAR
         run: |
@@ -88,12 +89,14 @@ jobs:
           docker build -t "$GAR_INFO"/"$APP_NAME":"$TAG" .
           gcloud info
           docker push "$GAR_INFO"/"$APP_NAME":"$TAG"
-          
-          deploy-to-gcp-dev:
+          #gcloud builds submit --tag "$GAR_INFO"/"$APP_NAME":"$TAG" .
+  
+  deploy-to-gcp-dev:
     name: Deploy to GCP Dev Env
+    needs: build-shipping 
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    
+  
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -106,14 +109,16 @@ jobs:
       - name: Set up Cloud SDK
         uses: 'google-github-actions/setup-gcloud@v0'
 
-      # Berfore Running Google Cloud Deploy, Ensure the Setup is done
-      # gcloud deploy apply --file clouddeploy.yaml --region=us-central1 --project=coe-srs-2022
+    
+
       - name: Call Google Cloud Deploy
         run: |
           cd K8s
           date_var=`date +%m%d%y-%H%M`
           echo "date_var=$date_var" >> $GITHUB_ENV
+          gcloud deploy apply --file clouddeploy.yaml --region=us-central1 --project=tribal-thought-363101
           gcloud deploy releases create rel-$date_var --delivery-pipeline=robot-shop-gcp --region=us-central1
+          
       
       - name: verify if the rollout is success
         run: |
@@ -138,6 +143,3 @@ jobs:
           fi
           counter=$(( $counter + 1))
           done
-         
-  
-  
